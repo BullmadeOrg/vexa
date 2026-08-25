@@ -149,14 +149,13 @@ async function main(): Promise<void> {
     const pcm = new Float32Array(1600).fill(0.05);
     await createTranscribe(baseInv({
       transcriptionServiceUrl: 'http://stt.test', transcriptionModel: 'openai/gpt-transcribe',
-      transcriptionResponseFormat: 'json',
     }))(pcm);
     await createTranscribe(baseInv({ transcriptionServiceUrl: 'http://stt.test' }))(pcm);
     (globalThis as any).fetch = realFetch;
     check('invocation.transcriptionModel rides the model form part', modelParts[0] === 'openai/gpt-transcribe', JSON.stringify(modelParts[0]));
-    check('invocation.transcriptionResponseFormat rides the response_format form part', responseFormatParts[0] === 'json', JSON.stringify(responseFormatParts[0]));
+    check('provider/model id selects portable JSON at the STT boundary', responseFormatParts[0] === 'json', JSON.stringify(responseFormatParts[0]));
     check('no transcriptionModel → default whisper-1 (wire unchanged)', modelParts[1] === 'whisper-1', JSON.stringify(modelParts[1]));
-    check('no transcriptionResponseFormat → default verbose_json (wire unchanged)', responseFormatParts[1] === 'verbose_json', JSON.stringify(responseFormatParts[1]));
+    check('plain model id keeps default verbose_json (wire unchanged)', responseFormatParts[1] === 'verbose_json', JSON.stringify(responseFormatParts[1]));
   }
 
   // ── 5) MIXED LANE (Teams/Zoom) speaker-label boundary (#890): a turn the mixed lane has NOT

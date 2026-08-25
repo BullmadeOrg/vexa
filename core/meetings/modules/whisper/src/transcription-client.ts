@@ -47,10 +47,6 @@ export interface TranscriptionClientConfig {
    *  (Groq, vLLM, gateways) need their served name; the bundled unit ignores it (its model is
    *  the unit's own MODEL_SIZE). Default: "whisper-1". */
   model?: string;
-  /** Response shape requested from the STT backend. `verbose_json` preserves timestamps and
-   *  confidence metadata; `json` is the portable shape used by providers such as OpenRouter's
-   *  Grok and GPT Transcribe routes. Default: `verbose_json`. */
-  responseFormat?: 'json' | 'verbose_json';
 }
 
 /** The STT boundary's FAILURE vocabulary (P5 + P18: an adapter must translate the
@@ -117,7 +113,9 @@ export class TranscriptionClient {
     this.maxSpeechDurationSec = config.maxSpeechDurationSec;
     this.minSilenceDurationMs = config.minSilenceDurationMs;
     this.model = config.model ?? 'whisper-1';
-    this.responseFormat = config.responseFormat ?? 'verbose_json';
+    // Aggregators identify models as provider/model and expose a portable text-only JSON shape.
+    // Local and direct OpenAI-compatible model ids keep verbose metadata by default.
+    this.responseFormat = this.model.includes('/') ? 'json' : 'verbose_json';
   }
 
   /**

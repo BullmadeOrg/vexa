@@ -49,11 +49,11 @@ async function run() {
   {
     const body = captureFetch();
     const client = new TranscriptionClient({
-      serviceUrl: 'http://stt.test', model: 'openai/gpt-transcribe', responseFormat: 'json',
+      serviceUrl: 'http://stt.test', model: 'openai/gpt-transcribe',
     });
     await client.transcribe(pcm, 'da');
-    check('configured response format rides the wire', formPartOf(body(), 'response_format') === 'json');
-    check('plain JSON omits unsupported timestamp options', formPartOf(body(), 'timestamp_granularities') === null);
+    check('provider/model id selects portable JSON', formPartOf(body(), 'response_format') === 'json');
+    check('portable JSON omits unsupported timestamp options', formPartOf(body(), 'timestamp_granularities') === null);
   }
   {
     const body = captureFetch();

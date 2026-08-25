@@ -38,7 +38,6 @@ Set these variables in `deploy/compose/.env`:
 TRANSCRIPTION_SERVICE_URL=http://<stt-host>:8000
 TRANSCRIPTION_SERVICE_TOKEN=<token-if-required>
 TRANSCRIPTION_MODEL=<model-id-your-backend-validates>
-TRANSCRIPTION_RESPONSE_FORMAT=json  # for providers that reject verbose_json
 ```
 
 `TRANSCRIPTION_SERVICE_URL` is the base URL. Do not include `/v1/audio/transcriptions`; Vexa appends
@@ -47,9 +46,10 @@ that path.
 If the backend ignores the `model` form part, leave `TRANSCRIPTION_MODEL` unset. If it validates model
 ids, set the exact served name.
 
-Vexa requests `verbose_json` by default so compatible backends can return timestamps and confidence
-metadata. Set `TRANSCRIPTION_RESPONSE_FORMAT=json` for text-only routes such as OpenRouter's Grok STT
-and GPT Transcribe models.
+Vexa requests `verbose_json` for plain model ids so compatible backends can return timestamps and
+confidence metadata. Provider-qualified model ids such as `openai/gpt-transcribe` or
+`x-ai/grok-stt-1.0` automatically use portable `json`, which works with OpenRouter's text-only STT
+routes.
 
 ## Example: FunASR or SenseVoice
 

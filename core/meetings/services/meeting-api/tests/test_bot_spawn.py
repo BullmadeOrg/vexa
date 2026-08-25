@@ -119,18 +119,6 @@ def test_invocation_carries_stt_model_when_provided():
     assert "transcriptionModel" not in build_invocation(**base)
 
 
-def test_invocation_carries_stt_response_format_when_provided():
-    """Cloud STT routes can require plain JSON; local Whisper keeps the verbose default."""
-    token = mint_meeting_token(1, USER, "google_meet", "abc-defg-hij", secret=SECRET)
-    base = dict(meeting_id=1, platform="google_meet", meeting_url="https://meet.google.com/abc-defg-hij",
-                bot_name="VexaBot", token=token, native_meeting_id="abc-defg-hij",
-                connection_id="conn-1", redis_url="redis://redis:6379/0")
-    inv = build_invocation(**base, transcription_response_format="json")
-    conforms_invocation(inv)
-    assert inv["transcriptionResponseFormat"] == "json"
-    assert "transcriptionResponseFormat" not in build_invocation(**base)
-
-
 def test_workload_spec_conforms_to_runtime_v1():
     inv = build_invocation(
         meeting_id=1, platform="google_meet", meeting_url="https://meet.google.com/x",
@@ -608,20 +596,6 @@ async def test_request_bot_env_transcription_model_rides_invocation(monkeypatch)
                       token_secret=SECRET)
     inv = json.loads(runtime.specs[0]["env"]["BOT_CONFIG"])
     assert "transcriptionModel" not in inv
-
-
-async def test_request_bot_env_transcription_response_format_rides_invocation(monkeypatch):
-    monkeypatch.setenv("TRANSCRIPTION_SERVICE_URL", "https://openrouter.ai/api")
-    monkeypatch.setenv("TRANSCRIPTION_SERVICE_TOKEN", "tok-env")
-    monkeypatch.setenv("TRANSCRIPTION_RESPONSE_FORMAT", "json")
-    monkeypatch.delenv("ADMIN_API_URL", raising=False)
-
-    repo, runtime = InMemoryMeetingRepo(), FakeRuntimeClient()
-    await request_bot(repo, runtime, user_id=USER, platform="google_meet",
-                      native_meeting_id="abc-defg-hij", redis_url="redis://redis:6379/0",
-                      token_secret=SECRET)
-    inv = json.loads(runtime.specs[0]["env"]["BOT_CONFIG"])
-    assert inv["transcriptionResponseFormat"] == "json"
 
 
 # ── route: meeting_url passthrough is SSRF-validated at entry (jitsi/zoom, TAKE on #543) ─────────

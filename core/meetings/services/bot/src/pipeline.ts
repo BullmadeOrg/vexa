@@ -330,7 +330,6 @@ export function createTranscribe(inv: Invocation): Transcribe {
     serviceUrl: inv.transcriptionServiceUrl,
     apiToken: inv.transcriptionServiceToken,
     model: inv.transcriptionModel ?? undefined,
-    responseFormat: inv.transcriptionResponseFormat,
   });
   const language = inv.language ?? undefined;
   return (pcm, prompt) => client.transcribe(pcm, language, prompt);

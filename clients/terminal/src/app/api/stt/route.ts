@@ -39,8 +39,9 @@ export async function POST(req: Request): Promise<NextResponse> {
   form.append("file", new Blob([wav], { type: "audio/wav" }), "dictation.wav");
   // The deployment's STT model id (validating backends reject unknown ids) — same env the
   // meeting pipeline's invocation carries; unset → whisper-1.
-  form.append("model", process.env.TRANSCRIPTION_MODEL || "whisper-1");
-  const responseFormat = process.env.TRANSCRIPTION_RESPONSE_FORMAT === "json" ? "json" : "verbose_json";
+  const model = process.env.TRANSCRIPTION_MODEL || "whisper-1";
+  form.append("model", model);
+  const responseFormat = model.includes("/") ? "json" : "verbose_json";
   form.append("response_format", responseFormat);
   if (responseFormat === "verbose_json") form.append("timestamp_granularities", "word");
   if (prompt) form.append("prompt", prompt.slice(0, 800));
