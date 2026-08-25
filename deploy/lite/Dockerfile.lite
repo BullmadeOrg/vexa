@@ -62,7 +62,11 @@ COPY clients/terminal/ ./
 ARG NEXT_PUBLIC_STACK_PROJECT_ID=""
 ARG NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=""
 ENV NEXT_PUBLIC_STACK_PROJECT_ID=$NEXT_PUBLIC_STACK_PROJECT_ID \
-    NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=$NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY
+    NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=$NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY \
+    STACK_SECRET_SERVER_KEY=ssk_build_only
+# Stack validates that a server key exists while Next collects route metadata.
+# This non-secret placeholder exists only in this builder stage; the final Lite
+# container receives the real runtime key from Coolify.
 # next build needs the dev deps (typescript/tailwind); prune them after so the runtime tree is lean.
 RUN npm run build && npm prune --omit=dev
 

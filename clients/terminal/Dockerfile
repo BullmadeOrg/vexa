@@ -37,7 +37,11 @@ ENV NEXT_PUBLIC_TERMINAL_MODE=$NEXT_PUBLIC_TERMINAL_MODE
 ARG NEXT_PUBLIC_STACK_PROJECT_ID=""
 ARG NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=""
 ENV NEXT_PUBLIC_STACK_PROJECT_ID=$NEXT_PUBLIC_STACK_PROJECT_ID \
-    NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=$NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY
+    NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=$NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY \
+    STACK_SECRET_SERVER_KEY=ssk_build_only
+# Stack validates that a server key exists while Next collects route metadata.
+# This non-secret placeholder is builder-only; the runtime reads the real key
+# from Coolify, and the value is not present in the compiled output.
 # Regular build (not standalone): produces .next served by the custom server in production.
 RUN npm run build
 
