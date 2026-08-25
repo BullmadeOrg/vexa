@@ -25,9 +25,9 @@
  * installRemoteAudioHook) so the global mirrors production's shape and the same
  * module the extension runs.
  *
- * esbuild resolves the @vexa/* entries by absolute path (computed below from the
- * workspace layout), so this build does NOT depend on the capture packages being
- * linked into the bot's node_modules (they are not — see gate:isolation).
+ * esbuild resolves the @vexa/* source entries by absolute path (computed below from
+ * the workspace layout), so this build does NOT depend on a separate Turbo task
+ * finishing their dist builds first or on linking them into bot node_modules.
  */
 import { build } from 'esbuild';
 import { fileURLToPath } from 'node:url';
@@ -38,13 +38,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // bot dir = meetings/services/bot ; modules live at meetings/modules/*
 const MODULES = path.resolve(__dirname, '..', '..', 'modules');
 
-/** Resolve a workspace capture brick's built ESM entry (dist/index.js). */
+/** Resolve a workspace capture brick's TypeScript source entry. Esbuild owns this browser bundle. */
 function moduleEntry(pkgDir) {
-  const entry = path.join(MODULES, pkgDir, 'dist', 'index.js');
+  const entry = path.join(MODULES, pkgDir, 'src', 'index.ts');
   if (!fs.existsSync(entry)) {
     throw new Error(
-      `[build-browser-utils] missing built entry: ${entry}\n` +
-      `  Build the capture bricks first (pnpm --filter @vexa/${pkgDir} build).`,
+      `[build-browser-utils] missing source entry: ${entry}`,
     );
   }
   return entry;
