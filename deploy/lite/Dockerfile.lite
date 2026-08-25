@@ -61,8 +61,10 @@ COPY clients/terminal/ ./
 # secret server key remains runtime-only and is never baked into the image.
 ARG NEXT_PUBLIC_STACK_PROJECT_ID=""
 ARG NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=""
+ARG NEXT_PUBLIC_TERMINAL_URL=""
 ENV NEXT_PUBLIC_STACK_PROJECT_ID=$NEXT_PUBLIC_STACK_PROJECT_ID \
     NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=$NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY \
+    NEXT_PUBLIC_TERMINAL_URL=$NEXT_PUBLIC_TERMINAL_URL \
     STACK_SECRET_SERVER_KEY=ssk_build_only
 # Stack validates that a server key exists while Next collects route metadata.
 # This non-secret placeholder exists only in this builder stage; the final Lite

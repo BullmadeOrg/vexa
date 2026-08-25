@@ -36,8 +36,10 @@ ENV NEXT_PUBLIC_TERMINAL_MODE=$NEXT_PUBLIC_TERMINAL_MODE
 # configuration and must be present while Next compiles the browser bundle.
 ARG NEXT_PUBLIC_STACK_PROJECT_ID=""
 ARG NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=""
+ARG NEXT_PUBLIC_TERMINAL_URL=""
 ENV NEXT_PUBLIC_STACK_PROJECT_ID=$NEXT_PUBLIC_STACK_PROJECT_ID \
     NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=$NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY \
+    NEXT_PUBLIC_TERMINAL_URL=$NEXT_PUBLIC_TERMINAL_URL \
     STACK_SECRET_SERVER_KEY=ssk_build_only
 # Stack validates that a server key exists while Next collects route metadata.
 # This non-secret placeholder is builder-only; the runtime reads the real key
