@@ -368,15 +368,31 @@ function gateEvalBaseline() {
 // FINOS licence classifier (ADR-0004), shared by gate:licenses (npm/py deps) and gate:image-licenses
 // (baked apt packages + pinned container images). B is tested before X so LGPL never trips the GPL
 // match. Cat X is where Redis ≥7.4's RSALv2/SSPLv1 lands — the exact class #653 keeps out of our images.
-const LICENSE_A = [/^MIT/, /^Apache-2\.0/i, /^BSD\b/, /^BSD-/, /^ISC/, /^0BSD/, /^Unlicense/, /^CC0-/, /^CC-BY-/, /^Python-2\.0/, /^PostgreSQL$/i, /^BlueOak/, /^Zlib/i, /^MIT-0/, /^WTFPL/i, /^SIL OPEN FONT LICENSE/i, /OR CC0-1\.0/];
+const LICENSE_A = [/^MIT/, /^Apache-2\.0/i, /^BSD\b/, /^BSD-/, /^ISC/, /^0BSD/, /^Unlicense/, /^CC0-/, /^CC-BY-/, /^Python-2\.0/, /^PostgreSQL$/i, /^BlueOak/, /^Zlib/i, /^MIT-0/, /^WTFPL/i, /^SIL OPEN FONT LICENSE/i, /OR CC0-1\.0/, /^\(AFL-2\.1 OR BSD-3-Clause\)$/];
 const LICENSE_B = [/LGPL/i, /^MPL/i, /^EPL/i];                                    // weak copyleft — needs a logged exception
 const LICENSE_X = [/(^|[^L])GPL/i, /AGPL/i, /SSPL/i, /\bBSL\b/i, /Business Source/i, /Elastic-/i, /Commons.?Clause/i, /Proprietary/i, /UNLICENSED/, /\bRSALv?\d/i, /Redis Source Available/i];
+// pnpm reports these client packages as Unknown because their package.json files omit `license`.
+// Each pinned tarball includes the same standard MIT LICENSE file; keep overrides version-specific
+// so a future Stack release must be reviewed again instead of inheriting this classification.
+const LICENSE_PACKAGE_OVERRIDES = new Map([
+  ["@stackframe/stack@2.8.108", "MIT"],
+  ["@stackframe/stack-sc@2.8.108", "MIT"],
+  ["@stackframe/stack-shared@2.8.108", "MIT"],
+  ["@stackframe/stack-ui@2.8.108", "MIT"],
+]);
 // → "A" (permissive, passes) | "B" (weak-copyleft, needs a logged exception) | "X" (forbidden) | "?" (unclassified)
 function classifyLicense(lic) {
   if (LICENSE_A.some((re) => re.test(lic))) return "A";
   if (LICENSE_B.some((re) => re.test(lic))) return "B";
   if (LICENSE_X.some((re) => re.test(lic))) return "X";
   return "?";
+}
+
+function effectivePackageLicense(reportedLicense, pkg) {
+  if (reportedLicense !== "Unknown") return reportedLicense;
+  const overrides = (pkg.versions || []).map((version) => LICENSE_PACKAGE_OVERRIDES.get(`${pkg.name}@${version}`));
+  if (overrides.length && overrides.every(Boolean) && new Set(overrides).size === 1) return overrides[0];
+  return reportedLicense;
 }
 
 function gateLicenses() {
@@ -389,18 +405,19 @@ function gateLicenses() {
   const exceptions = existsSync(exFile) ? (JSON.parse(readFileSync(exFile, "utf8")).categoryB || []) : [];
   const excepted = (name) => exceptions.some((e) => name === e.package || name.startsWith(e.package));
   const bad = [], flagged = [];
-  for (const [lic, pkgs] of Object.entries(data)) {
-    const names = pkgs.map((p) => p.name);
-    const cat = classifyLicense(lic);
-    if (cat === "A") continue;
-    if (cat === "B") {
-      const unlisted = names.filter((n) => !excepted(n));
-      if (unlisted.length) bad.push(`Cat-B ${lic} needs an entry in license-exceptions.json: ${unlisted.join(", ")}`);
-      else flagged.push(`${lic} (${names.join(", ")})`);
-      continue;
+  for (const [reportedLicense, pkgs] of Object.entries(data)) {
+    for (const pkg of pkgs) {
+      const lic = effectivePackageLicense(reportedLicense, pkg);
+      const cat = classifyLicense(lic);
+      if (cat === "A") continue;
+      if (cat === "B") {
+        if (!excepted(pkg.name)) bad.push(`Cat-B ${lic} needs an entry in license-exceptions.json: ${pkg.name}`);
+        else flagged.push(`${lic} (${pkg.name})`);
+        continue;
+      }
+      if (cat === "X") { bad.push(`FORBIDDEN (Cat X) ${lic}: ${pkg.name} — replace this dependency`); continue; }
+      bad.push(`unclassified licence "${lic}": ${pkg.name} — classify it in scripts/gates.mjs or replace the dep`);
     }
-    if (cat === "X") { bad.push(`FORBIDDEN (Cat X) ${lic}: ${names.join(", ")} — replace this dependency`); continue; }
-    bad.push(`unclassified licence "${lic}": ${names.join(", ")} — classify it in scripts/gates.mjs or replace the dep`);
   }
   if (bad.length) return fail(bad);
   const total = Object.values(data).reduce((n, p) => n + p.length, 0);
