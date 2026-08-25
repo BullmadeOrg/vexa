@@ -16,6 +16,11 @@ import { signIn } from "next-auth/react";
 type Status = "checking" | "out" | "in";
 type Providers = { google: boolean; microsoft: boolean };
 
+const stackEnabled = Boolean(
+  process.env.NEXT_PUBLIC_STACK_PROJECT_ID &&
+  process.env.NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY,
+);
+
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<Status>("checking");
   const [providers, setProviders] = useState<Providers>({ google: false, microsoft: false });
@@ -41,6 +46,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       .then((r) => (r.ok ? r.json() : { admin_exists: true }))
       .then((d: { admin_exists?: boolean }) => active && setAdminExists(d.admin_exists !== false))
       .catch(() => undefined);
+    const authError = new URLSearchParams(window.location.search).get("auth_error");
+    if (authError) setError("Login could not be completed. Please try again.");
     return () => { active = false; };
   }, []);
 
@@ -69,8 +76,11 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   if (status === "in") return <>{children}</>;
   if (status === "checking") return <div style={{ height: "100vh", background: "var(--bg)" }} />;
 
-  const hasOAuth = providers.google || providers.microsoft;
+  const hasOAuth = stackEnabled || providers.google || providers.microsoft;
   const claiming = !adminExists; // fresh instance → this sign-in claims the admin role
+  const returnTo = `${window.location.pathname}${window.location.search}`;
+  const stackExchange = `/api/auth/stack?return_to=${encodeURIComponent(returnTo)}`;
+  const stackSignIn = `/handler/sign-in?after_auth_return_to=${encodeURIComponent(stackExchange)}`;
 
   return (
     <div style={{ height: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -119,18 +129,24 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           <div style={{ fontSize: 12, color: "var(--t3)", lineHeight: 1.5 }}>Sign in to continue.</div>
         )}
 
-        {providers.google && (
+        {stackEnabled && (
+          <a href={stackSignIn} style={{ ...oauthBtn, textDecoration: "none" }}>
+            Continue with Bullmade
+          </a>
+        )}
+
+        {!stackEnabled && providers.google && (
           <button onClick={() => signIn("google", { callbackUrl: window.location.pathname + window.location.search })} style={oauthBtn}>
             <GoogleMark /> Continue with Google
           </button>
         )}
-        {providers.microsoft && (
+        {!stackEnabled && providers.microsoft && (
           <button onClick={() => signIn("microsoft", { callbackUrl: window.location.pathname + window.location.search })} style={oauthBtn}>
             <MicrosoftMark /> Continue with Microsoft
           </button>
         )}
 
-        {hasOAuth && (
+        {!stackEnabled && hasOAuth && (
           <button
             onClick={() => setShowDebug((v) => !v)}
             style={{ background: "none", border: "none", color: "var(--t3)", fontSize: 11, cursor: "pointer", padding: 0, alignSelf: "flex-start" }}
@@ -139,7 +155,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           </button>
         )}
 
-        {(!hasOAuth || showDebug) && (
+        {!stackEnabled && (!hasOAuth || showDebug) && (
           <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={{ fontSize: 11, color: "var(--t3)", lineHeight: 1.4 }}>
               {claiming && !hasOAuth

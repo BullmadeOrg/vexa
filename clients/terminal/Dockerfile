@@ -32,6 +32,12 @@ ENV NEXT_PUBLIC_GA_MEASUREMENT_ID=$NEXT_PUBLIC_GA_MEASUREMENT_ID
 # agent-api paths (404). Empty (default) keeps every surface. NEXT_PUBLIC_* → set BEFORE `next build`.
 ARG NEXT_PUBLIC_TERMINAL_MODE=""
 ENV NEXT_PUBLIC_TERMINAL_MODE=$NEXT_PUBLIC_TERMINAL_MODE
+# Optional Bullmade Stack Auth identity. These two values are public client
+# configuration and must be present while Next compiles the browser bundle.
+ARG NEXT_PUBLIC_STACK_PROJECT_ID=""
+ARG NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=""
+ENV NEXT_PUBLIC_STACK_PROJECT_ID=$NEXT_PUBLIC_STACK_PROJECT_ID \
+    NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=$NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY
 # Regular build (not standalone): produces .next served by the custom server in production.
 RUN npm run build
 

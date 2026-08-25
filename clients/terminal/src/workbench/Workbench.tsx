@@ -230,7 +230,11 @@ function UserProfile() {
   const signOut = () => {
     void fetch("/api/auth/logout", { method: "POST" }).finally(() => {
       try { localStorage.clear(); sessionStorage.clear(); } catch { /* storage unavailable */ }
-      window.location.reload();
+      const stackEnabled = Boolean(
+        process.env.NEXT_PUBLIC_STACK_PROJECT_ID &&
+        process.env.NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY,
+      );
+      window.location.assign(stackEnabled ? "/handler/sign-out" : "/");
     });
   };
 

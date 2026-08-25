@@ -57,6 +57,12 @@ WORKDIR /app/terminal
 COPY clients/terminal/package.json clients/terminal/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY clients/terminal/ ./
+# Optional Bullmade Stack Auth identity. These are public browser values; the
+# secret server key remains runtime-only and is never baked into the image.
+ARG NEXT_PUBLIC_STACK_PROJECT_ID=""
+ARG NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=""
+ENV NEXT_PUBLIC_STACK_PROJECT_ID=$NEXT_PUBLIC_STACK_PROJECT_ID \
+    NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY=$NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY
 # next build needs the dev deps (typescript/tailwind); prune them after so the runtime tree is lean.
 RUN npm run build && npm prune --omit=dev
 
