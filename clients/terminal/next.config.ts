@@ -14,9 +14,37 @@ import path from "path";
  */
 const VEXA_API_URL = process.env.VEXA_API_URL;
 
+const securityHeaders = [
+  { key: "Content-Security-Policy", value: [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
+    "form-action 'self' https://*.stack-auth.com",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https:",
+    "font-src 'self' data:",
+    "media-src 'self' blob:",
+    "connect-src 'self' https://*.stack-auth.com wss:",
+    "frame-src 'self' https://*.stack-auth.com",
+    "worker-src 'self' blob:",
+    "upgrade-insecure-requests",
+  ].join("; ") },
+  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy", value: "camera=(), geolocation=(), microphone=(self)" },
+];
+
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
   ...(process.env.BUILD_STANDALONE === "1" ? { output: "standalone" } : {}),
   turbopack: { root: path.resolve(__dirname) },
+  async headers() {
+    return [{ source: "/:path*", headers: securityHeaders }];
+  },
   async rewrites() {
     return VEXA_API_URL
       ? [
