@@ -11,7 +11,7 @@
  *
  *  Note: this drops the app session only. The OAuth *provider* (Google/Microsoft) keeps its own session
  *  — `prompt=select_account` (see authOptions) is what lets the user then choose a different account. */
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { headers } from "next/headers";
 import { AUTH_COOKIE, USER_INFO_COOKIE } from "../adminApi";
 
@@ -63,10 +63,10 @@ function expireCookie(name: string, secure: boolean, domain?: string): string {
   return parts.join("; ");
 }
 
-export async function POST() {
-  const host = (await headers()).get("host") || "";
+async function clearAuthCookies(res: NextResponse) {
+  const requestHeaders = await headers();
+  const host = requestHeaders.get("host") || "";
   const httpsDeploy = isSecureRequest();
-  const res = NextResponse.json({ success: true }, { headers: { "Cache-Control": "no-store" } });
 
   const emit = (name: string, scopes: (string | undefined)[]) => {
     // `__`-prefixed names MUST carry Secure (prefix rule); plain names were set Secure on an HTTPS deploy
@@ -93,5 +93,36 @@ export async function POST() {
     emit(`__Host-${base}`, [undefined]);
   }
 
+  // Stack/Hexclave uses project-specific and cross-domain refresh cookies. Clear only the names
+  // actually sent to this host, so logout also removes a stale callback/domain handoff without
+  // guessing the encoded cookie suffix.
+  const stackCookieNames = (requestHeaders.get("cookie") || "")
+    .split(";")
+    .map((part) => part.trim().split("=", 1)[0])
+    .filter((name) => {
+      const base = name.replace(/^__Host-/, "");
+      return (
+        base === "hexclave-access" ||
+        base === "stack-access" ||
+        base.startsWith("hexclave-refresh-") ||
+        base.startsWith("stack-refresh-")
+      );
+    });
+  for (const name of new Set(stackCookieNames)) emit(name, domainScopes(host));
+
   return res;
+}
+
+export async function POST() {
+  return clearAuthCookies(
+    NextResponse.json({ success: true }, { headers: { "Cache-Control": "no-store" } }),
+  );
+}
+
+export async function GET(request: NextRequest) {
+  return clearAuthCookies(
+    NextResponse.redirect(new URL("/", request.nextUrl.origin), {
+      headers: { "Cache-Control": "no-store" },
+    }),
+  );
 }
