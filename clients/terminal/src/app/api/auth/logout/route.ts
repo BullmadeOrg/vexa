@@ -120,8 +120,17 @@ export async function POST() {
 }
 
 export async function GET(request: NextRequest) {
+  const configured = process.env.TERMINAL_URL || process.env.NEXTAUTH_URL;
+  let origin = request.nextUrl.origin;
+  if (configured) {
+    try {
+      origin = new URL(configured).origin;
+    } catch {
+      // Keep the request origin when deployment configuration is malformed.
+    }
+  }
   return clearAuthCookies(
-    NextResponse.redirect(new URL("/", request.nextUrl.origin), {
+    NextResponse.redirect(new URL("/", origin), {
       headers: { "Cache-Control": "no-store" },
     }),
   );

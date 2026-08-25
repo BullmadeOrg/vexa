@@ -24,6 +24,16 @@ function safeReturnTo(value: string | null): string {
   return value;
 }
 
+function publicOrigin(request: NextRequest): string {
+  const configured = process.env.TERMINAL_URL || process.env.NEXTAUTH_URL;
+  if (!configured) return request.nextUrl.origin;
+  try {
+    return new URL(configured).origin;
+  } catch {
+    return request.nextUrl.origin;
+  }
+}
+
 function isAllowedEmail(email: string): boolean {
   const allowedDomains = (process.env.STACK_ALLOWED_EMAIL_DOMAINS || "bullmade.dk")
     .split(",")
@@ -34,7 +44,7 @@ function isAllowedEmail(email: string): boolean {
 }
 
 function authError(request: NextRequest, code: string) {
-  const url = new URL("/", request.nextUrl.origin);
+  const url = new URL("/", publicOrigin(request));
   url.searchParams.set("auth_error", code);
   return NextResponse.redirect(url, { headers: { "Cache-Control": NO_STORE } });
 }
@@ -43,7 +53,7 @@ export async function GET(request: NextRequest) {
   const user = await stackServerApp.getUser().catch(() => null);
   if (!user) {
     const returnTo = `${request.nextUrl.pathname}${request.nextUrl.search}`;
-    const url = new URL("/handler/sign-in", request.nextUrl.origin);
+    const url = new URL("/handler/sign-in", publicOrigin(request));
     url.searchParams.set("after_auth_return_to", returnTo);
     return NextResponse.redirect(url, { headers: { "Cache-Control": NO_STORE } });
   }
@@ -56,7 +66,7 @@ export async function GET(request: NextRequest) {
   if (!result.ok) return authError(request, "vexa_token");
 
   const returnTo = safeReturnTo(request.nextUrl.searchParams.get("return_to"));
-  const response = NextResponse.redirect(new URL(returnTo, request.nextUrl.origin), {
+  const response = NextResponse.redirect(new URL(returnTo, publicOrigin(request)), {
     headers: { "Cache-Control": NO_STORE },
   });
   const opts = {
