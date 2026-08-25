@@ -7,5 +7,11 @@ import { StackServerApp } from "@stackframe/stack";
  */
 export const stackServerApp = new StackServerApp({
   tokenStore: "nextjs-cookie",
-  urls: { handler: "/handler" },
+  urls: {
+    handler: "/handler",
+    home: "/",
+    afterSignIn: "/api/auth/stack?return_to=%2F",
+    afterSignUp: "/api/auth/stack?return_to=%2F",
+    afterSignOut: "/",
+  },
 });

@@ -24,6 +24,15 @@ function safeReturnTo(value: string | null): string {
   return value;
 }
 
+function isAllowedEmail(email: string): boolean {
+  const allowedDomains = (process.env.STACK_ALLOWED_EMAIL_DOMAINS || "bullmade.dk")
+    .split(",")
+    .map((domain) => domain.trim().toLowerCase().replace(/^@/, ""))
+    .filter(Boolean);
+  const domain = email.split("@").at(-1);
+  return Boolean(domain && allowedDomains.includes(domain));
+}
+
 function authError(request: NextRequest, code: string) {
   const url = new URL("/", request.nextUrl.origin);
   url.searchParams.set("auth_error", code);
@@ -41,6 +50,7 @@ export async function GET(request: NextRequest) {
 
   const email = user.primaryEmail?.trim().toLowerCase();
   if (!email) return authError(request, "missing_email");
+  if (!isAllowedEmail(email)) return authError(request, "email_not_allowed");
 
   const result = await findOrCreateUserToken(email);
   if (!result.ok) return authError(request, "vexa_token");
