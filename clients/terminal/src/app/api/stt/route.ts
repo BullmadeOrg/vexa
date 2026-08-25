@@ -10,14 +10,12 @@
  */
 import { NextResponse } from "next/server";
 import { resolveApiKey } from "../proxyAuth";
+import { extractTimedWords, responseFormatForModel, type UpstreamTranscription } from "./contract";
 import { sttEndpoint } from "./endpoint";
 
 export const runtime = "nodejs";
 
 const MAX_BYTES = 25 * 1024 * 1024; // ~13 min of 16 kHz WAV — far beyond any dictation window
-
-interface UpstreamWord { word?: string; start?: number; end?: number }
-interface UpstreamSegment { text?: string; words?: UpstreamWord[] }
 
 export async function POST(req: Request): Promise<NextResponse> {
   // Auth gate: this forwards to the shared transcription service with a server-side
@@ -41,9 +39,9 @@ export async function POST(req: Request): Promise<NextResponse> {
   // meeting pipeline's invocation carries; unset → whisper-1.
   const model = process.env.TRANSCRIPTION_MODEL || "whisper-1";
   form.append("model", model);
-  const responseFormat = model.includes("/") ? "json" : "verbose_json";
+  const responseFormat = responseFormatForModel(model);
   form.append("response_format", responseFormat);
-  if (responseFormat === "verbose_json") form.append("timestamp_granularities", "word");
+  if (responseFormat === "verbose_json") form.append("timestamp_granularities[]", "word");
   if (prompt) form.append("prompt", prompt.slice(0, 800));
 
   const headers: Record<string, string> = {};
@@ -56,10 +54,8 @@ export async function POST(req: Request): Promise<NextResponse> {
       const detail = await r.text().catch(() => "");
       return NextResponse.json({ error: `Transcription failed (${r.status})`, detail: detail.slice(0, 300) }, { status: 502 });
     }
-    const data = (await r.json()) as { text?: string; segments?: UpstreamSegment[] };
-    const words = (data.segments ?? []).flatMap((s) => s.words ?? [])
-      .filter((w) => typeof w.word === "string")
-      .map((w) => ({ word: w.word as string, start: w.start ?? 0, end: w.end ?? 0 }));
+    const data = (await r.json()) as UpstreamTranscription;
+    const words = extractTimedWords(data);
     return NextResponse.json({ text: (data.text ?? "").trim(), words });
   } catch (err) {
     const timeout = err instanceof Error && err.name === "TimeoutError";

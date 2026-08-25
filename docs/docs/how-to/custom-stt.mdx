@@ -47,9 +47,18 @@ If the backend ignores the `model` form part, leave `TRANSCRIPTION_MODEL` unset.
 ids, set the exact served name.
 
 Vexa requests `verbose_json` for plain model ids so compatible backends can return timestamps and
-confidence metadata. Provider-qualified model ids such as `openai/gpt-transcribe` or
-`x-ai/grok-stt-1.0` automatically use portable `json`, which works with OpenRouter's text-only STT
-routes.
+confidence metadata. Provider-qualified GPT model ids such as `openai/gpt-transcribe` or
+`x-ai/grok-stt-1.0` use portable text-only `json`. OpenRouter's `openai/whisper-1` route is the
+timestamp-capable exception: Vexa requests `verbose_json` plus `timestamp_granularities[]=word` and
+preserves its top-level word timings for live agreement and speaker boundaries.
+
+For OpenRouter with real word timestamps:
+
+```bash
+TRANSCRIPTION_SERVICE_URL=https://openrouter.ai/api
+TRANSCRIPTION_SERVICE_TOKEN=<openrouter-key>
+TRANSCRIPTION_MODEL=openai/whisper-1
+```
 
 ## Example: FunASR or SenseVoice
 

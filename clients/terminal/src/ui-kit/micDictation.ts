@@ -98,8 +98,6 @@ export async function startStreamingDictation(opts: StreamingDictationOptions = 
     return { text: (d.text ?? "").trim(), words: d.words ?? [] };
   };
 
-  const joinWords = (ws: SttWord[]) => ws.map((w) => w.word).join("").trim();
-
   const submit = async () => {
     if (inFlight || stopped) return;
     if (totalSamples - confirmedSamples < MIN_WINDOW_SAMPLES) return;
@@ -112,14 +110,14 @@ export async function startStreamingDictation(opts: StreamingDictationOptions = 
       let n = agreedPrefixLen(prevWords, words);
       if (n === 0 && windowSec > FORCE_CONFIRM_SEC) n = words.length;  // cap: never strand pending
       if (n > 0) {
-        const confirmed = joinWords(words.slice(0, n));
+        const confirmed = joinSttWords(words.slice(0, n));
         if (confirmed) confirmedText = confirmedText ? `${confirmedText} ${confirmed}` : confirmed;
         confirmedSamples += Math.min(Math.round(words[n - 1].end * SAMPLE_RATE), totalSamples - confirmedSamples);
         prevWords = [];                                      // window moved — old pass is incomparable
       } else {
         prevWords = words;
       }
-      opts.onUpdate?.(confirmedText, joinWords(words.slice(n)));
+      opts.onUpdate?.(confirmedText, joinSttWords(words.slice(n)));
     } catch (e) {
       opts.onError?.(e instanceof Error ? e.message : "transcription failed");
     } finally { inFlight = false; }
@@ -156,6 +154,16 @@ export async function startStreamingDictation(opts: StreamingDictationOptions = 
     },
     cancel(): void { stopped = true; release(); },
   };
+}
+
+/** OpenRouter words are bare tokens; local Whisper may prefix a space. Normalize both shapes. */
+export function joinSttWords(words: SttWord[]): string {
+  return words
+    .map((word) => word.word.trim())
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+([,.;:!?])/g, "$1")
+    .trim();
 }
 
 /** 16-bit PCM mono WAV (mirrors the whisper module's float32ToWav). */

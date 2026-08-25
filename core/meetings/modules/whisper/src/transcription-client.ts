@@ -113,9 +113,12 @@ export class TranscriptionClient {
     this.maxSpeechDurationSec = config.maxSpeechDurationSec;
     this.minSilenceDurationMs = config.minSilenceDurationMs;
     this.model = config.model ?? 'whisper-1';
-    // Aggregators identify models as provider/model and expose a portable text-only JSON shape.
-    // Local and direct OpenAI-compatible model ids keep verbose metadata by default.
-    this.responseFormat = this.model.includes('/') ? 'json' : 'verbose_json';
+    // Provider-qualified GPT transcription models expose portable text-only JSON. OpenRouter's
+    // OpenAI Whisper route is the important exception: it supports verbose_json plus genuine
+    // top-level word timestamps, which Vexa needs for streaming agreement and speaker boundaries.
+    this.responseFormat = this.model === 'openai/whisper-1' || !this.model.includes('/')
+      ? 'verbose_json'
+      : 'json';
   }
 
   /**
@@ -200,7 +203,7 @@ export class TranscriptionClient {
     if (this.responseFormat === 'verbose_json') {
       parts.push(Buffer.from(
         `--${boundary}\r\n` +
-        `Content-Disposition: form-data; name="timestamp_granularities"\r\n\r\n` +
+        `Content-Disposition: form-data; name="timestamp_granularities[]"\r\n\r\n` +
         `word\r\n`
       ));
     }
@@ -262,6 +265,7 @@ export class TranscriptionClient {
 
       const data = await response.json() as any;
 
+      const topLevelWords = Array.isArray(data.words) ? data.words : [];
       const allSegments = (data.segments || []).map((s: any) => ({
         start: s.start || 0,
         end: s.end || 0,
@@ -271,6 +275,17 @@ export class TranscriptionClient {
         compression_ratio: s.compression_ratio,
         words: s.words,
       }));
+      // OpenRouter's openai/whisper-1 response carries `words` at the top level and no segments.
+      // Preserve those real timings in one full-window segment so both the Google Meet and mixed
+      // pipelines can use their existing timestamp-aware paths instead of degrading to text-only.
+      if (allSegments.length === 0 && topLevelWords.length > 0 && String(data.text || '').trim()) {
+        allSegments.push({
+          start: topLevelWords[0]?.start || 0,
+          end: topLevelWords[topLevelWords.length - 1]?.end || data.duration || 0,
+          text: data.text,
+          words: topLevelWords,
+        });
+      }
       // Drop low-confidence (hallucinated / faint-bleed) segments at the source and
       // rebuild the text from what survives, so phantoms never reach the pipeline.
       // If the model returned no segments we can't score, so keep its text as-is.

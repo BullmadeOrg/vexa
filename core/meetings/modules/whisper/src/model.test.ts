@@ -34,6 +34,10 @@ function formPartOf(body: string, name: string): string | null {
   return m ? m[1] : null;
 }
 
+function hasFormPart(body: string, name: string, value: string): boolean {
+  return body.includes(`name="${name}"\r\n\r\n${value}\r\n`);
+}
+
 async function run() {
   const pcm = new Float32Array(1600).fill(0.05); // 0.1s of audio
 
@@ -53,14 +57,36 @@ async function run() {
     });
     await client.transcribe(pcm, 'da');
     check('provider/model id selects portable JSON', formPartOf(body(), 'response_format') === 'json');
-    check('portable JSON omits unsupported timestamp options', formPartOf(body(), 'timestamp_granularities') === null);
+    check('portable JSON omits unsupported timestamp options', !body().includes('name="timestamp_granularities'));
+  }
+  // OpenRouter routes OpenAI Whisper with verbose JSON and returns genuine word timings.
+  {
+    let result: Awaited<ReturnType<TranscriptionClient['transcribe']>> | undefined;
+    let body = '';
+    (globalThis as any).fetch = async (_url: unknown, init: { body: Buffer }) => {
+      body = Buffer.from(init.body).toString('latin1');
+      return new Response(JSON.stringify({
+        text: 'Hej med dig', language: 'da', duration: 1.2,
+        words: [
+          { word: 'Hej', start: 0, end: 0.3 },
+          { word: 'med', start: 0.4, end: 0.7 },
+          { word: 'dig', start: 0.8, end: 1.2 },
+        ],
+      }), { status: 200 });
+    };
+    const client = new TranscriptionClient({ serviceUrl: 'https://openrouter.ai/api', model: 'openai/whisper-1' });
+    result = await client.transcribe(pcm, 'da');
+    check('OpenRouter Whisper requests verbose JSON', formPartOf(body, 'response_format') === 'verbose_json');
+    check('OpenRouter Whisper requests word timestamps', hasFormPart(body, 'timestamp_granularities[]', 'word'));
+    check('top-level words are preserved on a synthetic segment', result.segments[0]?.words?.length === 3);
+    check('synthetic segment keeps the real final word time', result.segments[0]?.end === 1.2);
   }
   {
     const body = captureFetch();
     const client = new TranscriptionClient({ serviceUrl: 'http://stt.test' });
     await client.transcribe(pcm, 'en');
     check('default response format stays verbose_json', formPartOf(body(), 'response_format') === 'verbose_json');
-    check('verbose default keeps word timestamps', formPartOf(body(), 'timestamp_granularities') === 'word');
+    check('verbose default keeps word timestamps', hasFormPart(body(), 'timestamp_granularities[]', 'word'));
   }
   // No model configured → today's wire, byte-for-byte: whisper-1.
   {
