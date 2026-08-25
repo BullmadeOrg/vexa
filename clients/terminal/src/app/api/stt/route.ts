@@ -40,8 +40,9 @@ export async function POST(req: Request): Promise<NextResponse> {
   // The deployment's STT model id (validating backends reject unknown ids) — same env the
   // meeting pipeline's invocation carries; unset → whisper-1.
   form.append("model", process.env.TRANSCRIPTION_MODEL || "whisper-1");
-  form.append("response_format", "verbose_json");
-  form.append("timestamp_granularities", "word");
+  const responseFormat = process.env.TRANSCRIPTION_RESPONSE_FORMAT === "json" ? "json" : "verbose_json";
+  form.append("response_format", responseFormat);
+  if (responseFormat === "verbose_json") form.append("timestamp_granularities", "word");
   if (prompt) form.append("prompt", prompt.slice(0, 800));
 
   const headers: Record<string, string> = {};

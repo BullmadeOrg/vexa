@@ -52,6 +52,7 @@ export TRANSCRIPTION_SERVICE_URL="${TRANSCRIPTION_SERVICE_URL:-}"
 export TRANSCRIPTION_SERVICE_TOKEN="${TRANSCRIPTION_SERVICE_TOKEN:-}"
 # STT model id for validating backends (Groq/vLLM); empty → whisper-1.
 export TRANSCRIPTION_MODEL="${TRANSCRIPTION_MODEL:-}"
+export TRANSCRIPTION_RESPONSE_FORMAT="${TRANSCRIPTION_RESPONSE_FORMAT:-}"
 
 # Optional operator-owned service-authority.v1 boundary. The config stays credential-free; the
 # signing secret remains a separate inherited environment value and is never printed below.

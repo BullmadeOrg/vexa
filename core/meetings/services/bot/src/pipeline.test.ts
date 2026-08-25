@@ -137,17 +137,26 @@ async function main(): Promise<void> {
   {
     const realFetch = globalThis.fetch;
     const modelParts: Array<string | null> = [];
+    const responseFormatParts: Array<string | null> = [];
     (globalThis as any).fetch = async (_url: unknown, init: { body: Buffer }) => {
-      const m = Buffer.from(init.body).toString('latin1').match(/name="model"\r\n\r\n([^\r]*)\r\n/);
+      const body = Buffer.from(init.body).toString('latin1');
+      const m = body.match(/name="model"\r\n\r\n([^\r]*)\r\n/);
+      const f = body.match(/name="response_format"\r\n\r\n([^\r]*)\r\n/);
       modelParts.push(m ? m[1] : null);
+      responseFormatParts.push(f ? f[1] : null);
       return new Response(JSON.stringify({ text: '', language: 'en', duration: 0.1, segments: [] }), { status: 200 });
     };
     const pcm = new Float32Array(1600).fill(0.05);
-    await createTranscribe(baseInv({ transcriptionServiceUrl: 'http://stt.test', transcriptionModel: 'whisper-large-v3-turbo' }))(pcm);
+    await createTranscribe(baseInv({
+      transcriptionServiceUrl: 'http://stt.test', transcriptionModel: 'openai/gpt-transcribe',
+      transcriptionResponseFormat: 'json',
+    }))(pcm);
     await createTranscribe(baseInv({ transcriptionServiceUrl: 'http://stt.test' }))(pcm);
     (globalThis as any).fetch = realFetch;
-    check('invocation.transcriptionModel rides the model form part', modelParts[0] === 'whisper-large-v3-turbo', JSON.stringify(modelParts[0]));
+    check('invocation.transcriptionModel rides the model form part', modelParts[0] === 'openai/gpt-transcribe', JSON.stringify(modelParts[0]));
+    check('invocation.transcriptionResponseFormat rides the response_format form part', responseFormatParts[0] === 'json', JSON.stringify(responseFormatParts[0]));
     check('no transcriptionModel → default whisper-1 (wire unchanged)', modelParts[1] === 'whisper-1', JSON.stringify(modelParts[1]));
+    check('no transcriptionResponseFormat → default verbose_json (wire unchanged)', responseFormatParts[1] === 'verbose_json', JSON.stringify(responseFormatParts[1]));
   }
 
   // ── 5) MIXED LANE (Teams/Zoom) speaker-label boundary (#890): a turn the mixed lane has NOT

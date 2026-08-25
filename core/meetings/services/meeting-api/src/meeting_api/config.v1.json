@@ -119,6 +119,16 @@
    ]
   },
   {
+   "key": "TRANSCRIPTION_RESPONSE_FORMAT",
+   "class": "defaulted",
+   "default": "(unset — the whisper client sends verbose_json)",
+   "description": "STT response_format: json for portable OpenRouter routes, verbose_json for timestamp-rich Whisper-compatible backends",
+   "targets": [
+    "compose",
+    "lite"
+   ]
+  },
+  {
    "key": "TRANSCRIBE_ENABLED",
    "class": "defaulted",
    "default": "true",

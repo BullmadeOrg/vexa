@@ -39,6 +39,7 @@
         "transcriptionServiceUrl": { "type": "string", "description": "stt endpoint" },
         "transcriptionServiceToken": { "type": "string", "description": "SECRET; placeholder in goldens" },
         "transcriptionModel": { "type": ["string", "null"], "description": "stt model id sent as the OpenAI-compatible `model` form part; unset → whisper-1" },
+        "transcriptionResponseFormat": { "enum": ["json", "verbose_json"], "description": "response_format sent to the STT backend; unset → verbose_json" },
         "recordingEnabled": { "type": "boolean" },
         "captureSignalEnabled": { "type": "boolean", "description": "tee the raw captured-signal.v1 stream (audio frames + speaker events) to durable storage for offline replay (O-TEL-1); the transcript/recording paths are unaffected either way" },
         "captureModes": { "type": "array", "items": { "type": "string" } },

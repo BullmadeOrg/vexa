@@ -29,6 +29,10 @@ function modelPartOf(body: string): string | null {
   const m = body.match(/name="model"\r\n\r\n([^\r]*)\r\n/);
   return m ? m[1] : null;
 }
+function formPartOf(body: string, name: string): string | null {
+  const m = body.match(new RegExp(`name="${name}"\\r\\n\\r\\n([^\\r]*)\\r\\n`));
+  return m ? m[1] : null;
+}
 
 async function run() {
   const pcm = new Float32Array(1600).fill(0.05); // 0.1s of audio
@@ -39,6 +43,24 @@ async function run() {
     const client = new TranscriptionClient({ serviceUrl: 'http://stt.test', model: 'whisper-large-v3-turbo' });
     await client.transcribe(pcm, 'en');
     check('configured model rides the model form part', modelPartOf(body()) === 'whisper-large-v3-turbo', `got ${JSON.stringify(modelPartOf(body()))}`);
+  }
+  // Portable JSON mode is explicit: cloud routes that reject verbose metadata receive neither
+  // verbose_json nor the word-timestamp option. The default remains byte-for-byte unchanged.
+  {
+    const body = captureFetch();
+    const client = new TranscriptionClient({
+      serviceUrl: 'http://stt.test', model: 'openai/gpt-transcribe', responseFormat: 'json',
+    });
+    await client.transcribe(pcm, 'da');
+    check('configured response format rides the wire', formPartOf(body(), 'response_format') === 'json');
+    check('plain JSON omits unsupported timestamp options', formPartOf(body(), 'timestamp_granularities') === null);
+  }
+  {
+    const body = captureFetch();
+    const client = new TranscriptionClient({ serviceUrl: 'http://stt.test' });
+    await client.transcribe(pcm, 'en');
+    check('default response format stays verbose_json', formPartOf(body(), 'response_format') === 'verbose_json');
+    check('verbose default keeps word timestamps', formPartOf(body(), 'timestamp_granularities') === 'word');
   }
   // No model configured → today's wire, byte-for-byte: whisper-1.
   {

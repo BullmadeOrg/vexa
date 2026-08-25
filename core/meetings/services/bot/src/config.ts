@@ -68,6 +68,7 @@ export interface Invocation {
   transcriptionServiceUrl?: string;
   transcriptionServiceToken?: string;
   transcriptionModel?: string | null;
+  transcriptionResponseFormat?: 'json' | 'verbose_json';
   // ── recording ──
   recordingEnabled?: boolean;
   captureSignalEnabled?: boolean;
