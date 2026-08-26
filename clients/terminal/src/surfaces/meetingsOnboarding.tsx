@@ -52,17 +52,17 @@ const quickSteps = [
   {
     icon: "link",
     title: "Indsæt mødelinket",
-    body: "Kopiér linket fra Google Meet, Teams, Zoom eller Jitsi.",
+    body: "Kopiér linket fra Google Meet, Teams, Zoom eller Jitsi, og indsæt det i Vexa.",
   },
   {
     icon: "send",
     title: "Send botten ind",
-    body: "Tryk “Send bot”, og godkend Vexa, hvis den venter i lobbyen.",
+    body: "Tryk “Send bot”, og luk Vexa ind, hvis den venter i mødelobbyen.",
   },
   {
     icon: "file",
     title: "Se transskriptionen",
-    body: "Vexa skriver mødet ned, mens I taler, og gemmer teksten bagefter.",
+    body: "Åbn mødet i Vexa for at følge teksten live og se den igen bagefter.",
   },
 ] as const;
 
@@ -71,8 +71,8 @@ export function MeetingQuickGuide() {
   return (
     <section aria-label="Sådan virker Vexa"
       style={{ marginTop: 12, padding: "12px 14px", border: "1px solid var(--line)", borderRadius: 10, background: "var(--panel)" }}>
-      <div style={{ fontSize: 13, fontWeight: 650, color: "var(--t1)", marginBottom: 10 }}>
-        Sådan optager du et møde
+      <div style={{ fontSize: 13.5, fontWeight: 650, color: "var(--t1)", marginBottom: 10 }}>
+        Sådan får du mødet skrevet ned
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(175px, 1fr))", gap: 10 }}>
         {quickSteps.map((step, index) => (
@@ -82,10 +82,10 @@ export function MeetingQuickGuide() {
               <Icon name={step.icon} size={13} />
             </span>
             <span style={{ minWidth: 0 }}>
-              <span style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--t2)", lineHeight: 1.35 }}>
+              <span style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "var(--t2)", lineHeight: 1.35 }}>
                 {index + 1}. {step.title}
               </span>
-              <span style={{ display: "block", marginTop: 2, fontSize: 11, color: "var(--t3)", lineHeight: 1.4 }}>
+              <span style={{ display: "block", marginTop: 2, fontSize: 11.5, color: "var(--t3)", lineHeight: 1.4 }}>
                 {step.body}
               </span>
             </span>
