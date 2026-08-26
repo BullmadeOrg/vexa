@@ -79,6 +79,15 @@ describe("slim — the standing affordances on a populated Meetings page", () =>
 });
 
 describe("full — the three-path empty state", () => {
+  it("shows the short Danish three-step meeting guide", async () => {
+    stubCalendarApi({ connected: false });
+    render(<MeetingsOnboarding variant="full" />);
+    expect(screen.getByRole("region", { name: "Sådan virker Vexa" })).toBeTruthy();
+    expect(screen.getByText("1. Indsæt mødelinket")).toBeTruthy();
+    expect(screen.getByText("2. Send botten ind")).toBeTruthy();
+    expect(screen.getByText("3. Se transskriptionen")).toBeTruthy();
+  });
+
   it("shows all three paths, calendar first, when nothing is connected", async () => {
     stubCalendarApi({ connected: false });
     render(<MeetingsOnboarding variant="full" />);

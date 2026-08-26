@@ -48,6 +48,54 @@ const fieldStyle: CSSProperties = {
   padding: "7px 9px", color: "var(--t1)", fontSize: 12, outline: "none",
 };
 
+const quickSteps = [
+  {
+    icon: "link",
+    title: "Indsæt mødelinket",
+    body: "Kopiér linket fra Google Meet, Teams, Zoom eller Jitsi.",
+  },
+  {
+    icon: "send",
+    title: "Send botten ind",
+    body: "Tryk “Send bot”, og godkend Vexa, hvis den venter i lobbyen.",
+  },
+  {
+    icon: "file",
+    title: "Se transskriptionen",
+    body: "Vexa skriver mødet ned, mens I taler, og gemmer teksten bagefter.",
+  },
+] as const;
+
+/** Compact, always-visible explanation of the normal meeting flow. */
+export function MeetingQuickGuide() {
+  return (
+    <section aria-label="Sådan virker Vexa"
+      style={{ marginTop: 12, padding: "12px 14px", border: "1px solid var(--line)", borderRadius: 10, background: "var(--panel)" }}>
+      <div style={{ fontSize: 13, fontWeight: 650, color: "var(--t1)", marginBottom: 10 }}>
+        Sådan optager du et møde
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(175px, 1fr))", gap: 10 }}>
+        {quickSteps.map((step, index) => (
+          <div key={step.title} style={{ display: "flex", alignItems: "flex-start", gap: 9, minWidth: 0 }}>
+            <span aria-hidden="true"
+              style={{ width: 25, height: 25, flex: "none", borderRadius: "50%", display: "grid", placeItems: "center", background: "var(--panel2)", color: "var(--accent)" }}>
+              <Icon name={step.icon} size={13} />
+            </span>
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--t2)", lineHeight: 1.35 }}>
+                {index + 1}. {step.title}
+              </span>
+              <span style={{ display: "block", marginTop: 2, fontSize: 11, color: "var(--t3)", lineHeight: 1.4 }}>
+                {step.body}
+              </span>
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 /** Loading tri-state so neither skin flashes: null = unknown yet. */
 function useCalendarConnected(): [boolean | null, () => void] {
   const [connected, setConnected] = useState<boolean | null>(null);
@@ -193,6 +241,7 @@ export function MeetingsOnboarding({ variant }: { variant: "full" | "slim" }) {
   if (variant === "slim") {
     return (
       <>
+        <MeetingQuickGuide />
         {connected === false && (
           <div style={{ ...cardBase, flexDirection: "row", alignItems: "center", gap: 10, marginTop: 12 }}>
             <Icon name="cal" size={15} style={{ color: "var(--t3)", flex: "none" }} />
@@ -219,6 +268,7 @@ export function MeetingsOnboarding({ variant }: { variant: "full" | "slim" }) {
   // full = the empty-Meetings center stage (frame 4): three paths, calendar primary.
   return (
     <>
+      <MeetingQuickGuide />
       <div style={{ marginTop: 14, fontSize: 12.5, color: "var(--t3)" }}>
         Nothing here yet — pick how meetings should arrive.
       </div>
