@@ -23,6 +23,7 @@ export const stackServerApp = new StackServerApp({
   publishableClientKey,
   secretServerKey,
   tokenStore: "nextjs-cookie",
+  analytics: { enabled: false },
   urls: {
     handler: `${appUrl}/handler`,
     home: `${appUrl}/`,

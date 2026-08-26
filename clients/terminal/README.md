@@ -62,12 +62,18 @@ sign-in the terminal prunes a user's oldest `terminal-login` tokens beyond `VEXA
 tokens rather than one new token per sign-in. The prune only ever touches `terminal-login`-named
 tokens; **self-serve tokens you created above are never pruned by login.**
 
+Stack Auth's built-in pages live under `/handler/*`. Their SDK-generated layout scripts require
+`unsafe-eval`, so that CSP exception is limited to those routes; the rest of the terminal keeps the
+stricter policy. Stack analytics is disabled, and Stripe.js is loaded lazily only if a payment
+surface is actually opened.
+
 ## Isolated evaluation
 
-No test suite yet (`tests/` absent). Standalone build + typecheck:
+Vitest covers the terminal behavior. Run the test suite and the production build before release:
 
 ```bash
-pnpm install && pnpm build      # next build = typecheck + lint (L1/L2)
+pnpm test                       # terminal unit and integration tests
+pnpm build                      # production build + typecheck
 pnpm dev                        # next dev -p 3000 — drive surfaces against a live agent-api (L4)
 ```
 
@@ -80,7 +86,7 @@ pnpm dev                        # next dev -p 3000 — drive surfaces against a 
 - ✅ delivered — live meeting surface: `/meetings` + `/ws` status (no poll) + `/api/meeting/stream` SSE + bot start/stop via `/bots`
 - ✅ delivered — generic event ingress proxy (`/api/events` → `event.v1`)
 - 🟡 partial — hardcoded `subject` per surface (`u_jane` / `u_live`), no real identity
-- ⬜ planned — login (Google + dev type-any-email) → replace the hardcoded `subject` with the authenticated user
+- ✅ delivered — Bullmade login through Stack Auth
 - ⬜ planned — real meetings list (live + past) with a recorded view
 - ⬜ planned — routines type-toggle (agent | meeting)
 - ⬜ planned — meeting ↔ doc cross-links
