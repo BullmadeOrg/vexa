@@ -16,7 +16,9 @@ column-reordering do not).
 from __future__ import annotations
 
 import ast
+import io
 import json
+import tokenize
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -49,6 +51,38 @@ def _tablename(cls: ast.ClassDef):
     return None
 
 
+def _canonical_unparse(node: ast.AST) -> str:
+    """Render an expression identically across supported Python versions.
+
+    Python 3.9's ``ast.unparse`` renders an empty lambda as ``lambda :`` while newer
+    versions render ``lambda:``. Remove only that token-to-token whitespace; a plain
+    string replacement could corrupt an actual string value containing ``lambda :``.
+    """
+    source = ast.unparse(node)
+    tokens = list(tokenize.generate_tokens(io.StringIO(source).readline))
+    line_offsets = [0]
+    for line in source.splitlines(keepends=True):
+        line_offsets.append(line_offsets[-1] + len(line))
+
+    def offset(position) -> int:
+        row, column = position
+        return line_offsets[row - 1] + column
+
+    removals = []
+    for current, following in zip(tokens, tokens[1:]):
+        if (
+            current.type == tokenize.NAME
+            and current.string == "lambda"
+            and following.type == tokenize.OP
+            and following.string == ":"
+        ):
+            removals.append((offset(current.end), offset(following.start)))
+
+    for start, end in reversed(removals):
+        source = source[:start] + source[end:]
+    return source
+
+
 def _columns(cls: ast.ClassDef) -> dict:
     cols: dict = {}
     for stmt in cls.body:
@@ -58,7 +92,7 @@ def _columns(cls: ast.ClassDef) -> dict:
         elif isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
             target, value = stmt.target.id, stmt.value
         if target and _is_column_call(value):
-            cols[target] = ast.unparse(value)  # normalized column definition (type + flags)
+            cols[target] = _canonical_unparse(value)  # normalized column definition (type + flags)
     return cols
 
 

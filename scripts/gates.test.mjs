@@ -127,6 +127,27 @@ function runGate(name) {
   try { return { green: true, out: execFileSync("node", ["scripts/gates.mjs", name], { cwd: ROOT, encoding: "utf8" }) }; }
   catch (e) { return { green: false, out: `${e.stdout || ""}${e.stderr || ""}` }; }
 }
+
+// ── gate:db-schema ─────────────────────────────────────────────────────────────────────────────
+
+test("db-schema canonicalizes Python 3.9's empty-lambda spacing", () => {
+  const script = [
+    "import ast",
+    "from unittest.mock import patch",
+    "from scripts.schema_digest import _canonical_unparse",
+    "node = ast.parse('Column(default=lambda: {})', mode='eval').body",
+    "with patch('scripts.schema_digest.ast.unparse', return_value=\"Column(default=lambda : {}, note='lambda :')\"):",
+    "    print(_canonical_unparse(node))",
+  ].join("\n");
+  const out = execFileSync("python3", ["-c", script], { cwd: ROOT, encoding: "utf8" });
+  assert.equal(out.trim(), "Column(default=lambda: {}, note='lambda :')");
+});
+
+test("db-schema vacuity: the committed model structure matches its seal", () => {
+  const r = runGate("db-schema");
+  assert.equal(r.green, true, `the unchanged schema is reported as drifted:\n${r.out}`);
+});
+
 // Temporarily replace `find`→`repl` in a tracked file, run fn, always restore the exact original bytes.
 function withEdited(relPath, find, repl, fn) {
   const abs = join(ROOT, relPath);
