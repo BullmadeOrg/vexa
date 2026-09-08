@@ -208,6 +208,10 @@ async def request_bot(
     means no cap was provided, so no pre-check.
     """
     authority = authority or AllowAllServiceAuthority()
+    # Bullmade's internal meetings default to Danish. Explicit language choices win;
+    # an empty string keeps automatic detection available to API callers.
+    if language is None:
+        language = "da"
     # 1. URL.
     constructed_url = meeting_url or construct_meeting_url(platform, native_meeting_id)
 

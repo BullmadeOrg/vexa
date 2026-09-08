@@ -162,6 +162,24 @@ async def test_request_bot_eager_creates_session_and_spawns(monkeypatch):
     assert len(repo.sessions) == 1
     spawned = json.loads(runtime.specs[0]["env"]["BOT_CONFIG"])
     assert repo.sessions[0]["session_uid"] == spawned["connectionId"]
+    assert spawned["language"] == "da", "omitted language must default to Danish"
+
+
+@pytest.mark.parametrize("choice,expected", [(None, "da"), ("da", "da"), ("en", "en"), ("", "")])
+async def test_bullmade_language_default_reaches_bot_invocation(monkeypatch, choice, expected):
+    monkeypatch.setenv("TRANSCRIPTION_SERVICE_URL", "https://stt.vexa.ai")
+    monkeypatch.setenv("TRANSCRIPTION_SERVICE_TOKEN", "tok-test")
+    repo = InMemoryMeetingRepo()
+    runtime = FakeRuntimeClient()
+    await request_bot(
+        repo, runtime, user_id=USER, platform="jitsi",
+        native_meeting_id="BullmadeLanguageTest@meet.example.com",
+        meeting_url="https://meet.example.com/BullmadeLanguageTest",
+        language=choice, redis_url="redis://redis:6379/0", token_secret=SECRET,
+    )
+    invocation = json.loads(runtime.specs[0]["env"]["BOT_CONFIG"])
+    assert invocation["language"] == expected
+    conforms_invocation(invocation)
 
 
 def test_iso_utc_marks_naive_utc_with_z():

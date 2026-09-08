@@ -78,8 +78,32 @@ async function run() {
     result = await client.transcribe(pcm, 'da');
     check('OpenRouter Whisper requests verbose JSON', formPartOf(body, 'response_format') === 'verbose_json');
     check('OpenRouter Whisper requests word timestamps', hasFormPart(body, 'timestamp_granularities[]', 'word'));
+    check('OpenRouter Whisper also requests confidence-bearing segments', hasFormPart(body, 'timestamp_granularities[]', 'segment'));
+    check('Danish reaches the HTTP request', hasFormPart(body, 'language', 'da'));
     check('top-level words are preserved on a synthetic segment', result.segments[0]?.words?.length === 3);
     check('synthetic segment keeps the real final word time', result.segments[0]?.end === 1.2);
+  }
+  {
+    const words = [
+      { word: 'Hej', start: 0.1, end: 0.4 },
+      { word: 'igen', start: 0.8, end: 1.1 },
+      { word: 'opdigtet', start: 1.3, end: 1.8 },
+      { word: 'Farvel', start: 2.2, end: 2.8 },
+    ];
+    (globalThis as any).fetch = async () => new Response(JSON.stringify({
+      text: 'Hej igen opdigtet Farvel', language: 'danish', duration: 3, words,
+      segments: [
+        { start: 0, end: 1, text: 'Hej igen', avg_logprob: -0.3, no_speech_prob: 0.1 },
+        { start: 1, end: 2, text: 'opdigtet', avg_logprob: -1.5, no_speech_prob: 0.9 },
+        { start: 2, end: 3, text: 'Farvel', avg_logprob: -0.2, no_speech_prob: 0.1 },
+      ],
+    }), { status: 200 });
+    const client = new TranscriptionClient({ serviceUrl: 'https://openrouter.ai/api', model: 'openai/whisper-1' });
+    const result = await client.transcribe(pcm, 'da');
+    check('acoustic confidence removes junk from both segments and text', result.segments.length === 2 && result.text === 'Hej igen Farvel');
+    check('boundary word assigned once with its original timestamps', JSON.stringify(result.segments[0]?.words) === JSON.stringify(words.slice(0, 2)));
+    check('later word times remain absolute within the audio window', JSON.stringify(result.segments[1]?.words) === JSON.stringify(words.slice(3)));
+    check('confidence metadata survives normalization', result.segments[0]?.avg_logprob === -0.3);
   }
   {
     const body = captureFetch();

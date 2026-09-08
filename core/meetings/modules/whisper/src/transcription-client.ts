@@ -206,6 +206,15 @@ export class TranscriptionClient {
         `Content-Disposition: form-data; name="timestamp_granularities[]"\r\n\r\n` +
         `word\r\n`
       ));
+      // OpenAI Whisper only includes acoustic confidence when segment metadata is requested.
+      // Ask for BOTH granularities: confidence filtering must not cost us genuine word times.
+      if (this.model === 'openai/whisper-1') {
+        parts.push(Buffer.from(
+          `--${boundary}\r\n` +
+          `Content-Disposition: form-data; name="timestamp_granularities[]"\r\n\r\n` +
+          `segment\r\n`
+        ));
+      }
     }
 
     // Max speech segment duration (controls how often Whisper splits segments)
@@ -273,11 +282,14 @@ export class TranscriptionClient {
         avg_logprob: s.avg_logprob,
         no_speech_prob: s.no_speech_prob,
         compression_ratio: s.compression_ratio,
-        words: s.words,
+        // OpenAI places real word times at the top level, while faster-whisper nests them.
+        // A midpoint assigns boundary-straddling words to just one adjacent segment.
+        words: s.words ?? (topLevelWords.length ? topLevelWords.filter((w: any) => {
+          const midpoint = (w.start + w.end) / 2;
+          return Number.isFinite(midpoint) && midpoint >= s.start && midpoint < s.end;
+        }) : undefined),
       }));
-      // OpenRouter's openai/whisper-1 response carries `words` at the top level and no segments.
-      // Preserve those real timings in one full-window segment so both the Google Meet and mixed
-      // pipelines can use their existing timestamp-aware paths instead of degrading to text-only.
+      // Word-only responses remain supported without inventing timings or confidence scores.
       if (allSegments.length === 0 && topLevelWords.length > 0 && String(data.text || '').trim()) {
         allSegments.push({
           start: topLevelWords[0]?.start || 0,
