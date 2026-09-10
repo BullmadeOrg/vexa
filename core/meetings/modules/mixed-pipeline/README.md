@@ -30,6 +30,13 @@ emitted segments into the bus envelopes.
 Front door: [`src/index.ts`](src/index.ts).
 
 ## Verify
+
+Acoustic admission is per segment. Complete phrases use the shared Whisper
+confidence rule; uncertain segments shorter than two seconds keep the stricter
+mixed-lane guard. One rejected segment cannot discard otherwise valid neighbors.
+Silence gating, prompt-echo checks, speaker boundaries and timestamp mapping
+remain independent controls.
+
 ```bash
 pnpm --filter @vexa/mixed-pipeline build
 pnpm --filter @vexa/mixed-pipeline test
@@ -37,6 +44,10 @@ pnpm --filter @vexa/mixed-pipeline test
 The goldens are fully **offline and model-free** — each test injects its own
 segmenter (`makeSegmenter`) and a scripted/stub Whisper, so the ONNX model is never
 loaded and there is no network:
+
+- `speech-confidence.test.ts` — a recognized Danish phrase survives admission;
+  short uncertain fragments, silence and low-confidence neighbors remain rejected;
+  published segment times are retained.
 - `confirm-loop.golden.test.ts` — pins the LocalAgreement-3 confirm/pending/prompt/id
   loop (the shared `@vexa/transcribe-buffer` behavior) with a scripted stub Whisper.
 - `naming.smoke.test.ts` — a hint name binds to a segmentation turn (hints-only namer).

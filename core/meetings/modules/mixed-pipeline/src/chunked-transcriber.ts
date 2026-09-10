@@ -52,7 +52,7 @@ import {
   type TransportEvent, type TurnSource, type TurnSourceCallbacks,
 } from './turn-source.js';
 import { TrackNamer } from './track-namer.js';
-import type { TranscriptionResult } from '@vexa/transcribe-whisper';
+import { isLowConfidenceSegment, type TranscriptionResult } from '@vexa/transcribe-whisper';
 import { localAgreement } from '@vexa/transcribe-buffer';
 import { hallucinationRule, type SuppressedSegment } from './hallucination-gate.js';
 
@@ -1039,7 +1039,7 @@ export class ChunkedTranscriber {
       this.cb.onError?.(e);                                            // P18: surface the fault…
       this.log(`[ChunkedTranscriber] transcribe failed: ${e?.message}`);   // …keep the local log too
     }
-    const gated = result ? this.applyGates(result, spanEnd - spanStart) : null;
+    const gated = result ? this.applyGates(result) : null;
     if (!gated || gated.length === 0) {
       if (closing) await this.closeOut(turn);
       return;
@@ -1531,28 +1531,22 @@ export class ChunkedTranscriber {
     }
   }
 
-  /** The bot's production quality gates. Returns whisper segments or null. */
-  private applyGates(result: TranscriptionResult, windowMs: number): TranscriptionResult['segments'] | null {
+  /** Shared acoustic admission plus the short-window guard, independently per segment. */
+  private applyGates(result: TranscriptionResult): TranscriptionResult['segments'] | null {
     if (!result.text || !result.text.trim()) return null;
     const prob = result.language_probability ?? 0;
     if (!this.cb.language && prob > 0 && prob < 0.3) return null;
-    const seg0 = result.segments?.[0];
-    if (seg0) {
-      const noSpeech = seg0.no_speech_prob ?? 0;
-      const logProb = seg0.avg_logprob ?? 0;
-      const compression = seg0.compression_ratio ?? 1;
-      const duration = (seg0.end || 0) - (seg0.start || 0);
-      if ((noSpeech > 0.5 && logProb < -0.7) || (logProb < -0.8 && duration < 2.0) || compression > 2.4) return null;
-    }
-    // NO phrase-list hallucination filter here — live monitoring showed it
-    // killing real interview answers ("Yes.", "Okay.", "Right?", "Thank
-    // you.") even on short windows. The hallucination vector it was built
-    // for (whisper inventing phrases on silence) is closed upstream: spans
-    // are model-cut SPEECH regions and RMS-gated, and the no_speech/logprob/
-    // compression gates above catch acoustic junk. Prompt-echo is filtered
-    // separately at the segment level.
+    // Short, uncertain fragments need a stricter guard than a complete spoken
+    // phrase. A no-speech score alone must not discard a longer phrase which
+    // passes shared acoustic admission. Each segment is judged independently.
     return (result.segments && result.segments.length > 0)
-      ? result.segments
+      ? result.segments.filter(s => {
+          if (isLowConfidenceSegment(s)) return false;
+          const short = (s.end || 0) - (s.start || 0) < 2.0;
+          const logProb = s.avg_logprob ?? 0;
+          const noSpeech = s.no_speech_prob ?? 0;
+          return !(short && (logProb < -0.8 || (noSpeech > 0.5 && logProb < -0.7)));
+        })
       : [{ text: result.text, start: 0, end: 0 } as any];
   }
 }
